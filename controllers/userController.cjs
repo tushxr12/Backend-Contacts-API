@@ -2,6 +2,8 @@ const asyncHandler = require("express-async-handler");
 const bcrypt = require("bcrypt");
 const User = require("../models/userModel.cjs");
 const jwt = require("jsonwebtoken");
+const dotenv = require("dotenv").config();
+
 //@desc Register a user
 //@route POST /api/users/register
 //@access public
@@ -45,11 +47,23 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
   const user = await User.findOne({ email });
+
   if (user && (await bcrypt.compare(password, user.password))) {
-    const accesToken = jwt.sign({
-      user: { username: user.username },
-    });
+    const accessToken = jwt.sign(
+      {
+        user: {
+          username: user.username,
+          email: user.email,
+          id: user.id,
+        },
+      },
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: "1m" }
+    );
     res.status(200).json({ accessToken });
+  } else {
+    res.status(401);
+    throw new Error("Email or password is not valid");
   }
 });
 
@@ -57,7 +71,7 @@ const loginUser = asyncHandler(async (req, res) => {
 //@route POST /api/users/current
 //@access private
 const currentUser = asyncHandler(async (req, res) => {
-  res.json({ message: "Current user" });
+  res.json(req.user);
 });
 
 module.exports = { registerUser, loginUser, currentUser };
